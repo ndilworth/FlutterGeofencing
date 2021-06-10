@@ -6,7 +6,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:geofencing/src/geofencing.dart';
 import 'package:geofencing/src/location.dart';
 
@@ -28,7 +27,7 @@ void callbackDispatcher() {
     args[2]
         .forEach((dynamic e) => locationList.add(double.parse(e.toString())));
     final Location triggeringLocation = locationFromList(locationList);
-    final GeofenceEvent event = intToGeofenceEvent(args[3]);
+    final GeofenceEventTrigger event = intToGeofenceEvent(args[3]);
     callback(triggeringGeofences, triggeringLocation, event);
   });
   _backgroundChannel.invokeMethod('GeofencingService.initialized');

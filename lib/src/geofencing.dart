@@ -18,16 +18,16 @@ const int _kDwellEvent = 4;
 /// Valid geofencing events.
 ///
 /// Note: `GeofenceEvent.dwell` is not supported on iOS.
-enum GeofenceEvent { enter, exit, dwell }
+enum GeofenceEventTrigger { enter, exit, dwell }
 
 // Internal.
-int geofenceEventToInt(GeofenceEvent e) {
+int geofenceEventToInt(GeofenceEventTrigger e) {
   switch (e) {
-    case GeofenceEvent.enter:
+    case GeofenceEventTrigger.enter:
       return _kEnterEvent;
-    case GeofenceEvent.exit:
+    case GeofenceEventTrigger.exit:
       return _kExitEvent;
-    case GeofenceEvent.dwell:
+    case GeofenceEventTrigger.dwell:
       return _kDwellEvent;
     default:
       throw UnimplementedError();
@@ -36,14 +36,14 @@ int geofenceEventToInt(GeofenceEvent e) {
 
 // TODO(bkonyi): handle event masks
 // Internal.
-GeofenceEvent intToGeofenceEvent(int e) {
+GeofenceEventTrigger intToGeofenceEvent(int e) {
   switch (e) {
     case _kEnterEvent:
-      return GeofenceEvent.enter;
+      return GeofenceEventTrigger.enter;
     case _kExitEvent:
-      return GeofenceEvent.exit;
+      return GeofenceEventTrigger.exit;
     case _kDwellEvent:
-      return GeofenceEvent.dwell;
+      return GeofenceEventTrigger.dwell;
     default:
       throw UnimplementedError();
   }
@@ -66,7 +66,7 @@ class GeofenceRegion {
   /// The types of geofence events to listen for.
   ///
   /// Note: `GeofenceEvent.dwell` is not supported on iOS.
-  final List<GeofenceEvent> triggers;
+  final List<GeofenceEventTrigger> triggers;
 
   /// Android specific settings for a geofence.
   final AndroidGeofencingSettings androidSettings;
@@ -79,7 +79,9 @@ class GeofenceRegion {
 
   List<dynamic> _toArgs() {
     final int triggerMask = triggers.fold(
-        0, (int trigger, GeofenceEvent e) => (geofenceEventToInt(e) | trigger));
+        0,
+        (int trigger, GeofenceEventTrigger e) =>
+            (geofenceEventToInt(e) | trigger));
     final List<dynamic> args = <dynamic>[
       id,
       location.latitude,
@@ -134,10 +136,11 @@ class GeofencingManager {
   /// `GeofenceEvent.dwell` trigger on iOS, `UnsupportedError` is thrown.
   static Future<void> registerGeofence(
       GeofenceRegion region,
-      void Function(List<String> id, Location location, GeofenceEvent event)
+      void Function(
+              List<String> id, Location location, GeofenceEventTrigger event)
           callback) async {
     if (Platform.isIOS &&
-        region.triggers.contains(GeofenceEvent.dwell) &&
+        region.triggers.contains(GeofenceEventTrigger.dwell) &&
         (region.triggers.length == 1)) {
       throw UnsupportedError("iOS does not support 'GeofenceEvent.dwell'");
     }
