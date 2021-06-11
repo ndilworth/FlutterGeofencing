@@ -9,9 +9,19 @@ List<dynamic> platformSettingsToArgs(AndroidGeofencingSettings s) =>
     s._toArgs();
 
 class AndroidGeofencingSettings {
+  /// Fire these triggers on geofence addition if already valid
   List<GeofenceEventTrigger> initialTrigger;
+
+  /// Automated time for geofence to be removed
+  /// Default -1 for permanent geofence
   int expirationDuration;
+
+  /// Millisecond count before dwell event triggered
   int loiteringDelay;
+
+  /// Millisecond count between callbacks from geofence
+  /// Higher values will reduces responsiveness but drastically
+  /// improve battery life - Recommend 300000 (5 minutes)
   int notificationResponsiveness;
 
   AndroidGeofencingSettings(
