@@ -20,16 +20,6 @@ const int _kDwellEvent = 4;
 /// Note: `GeofenceEvent.dwell` is not supported on iOS.
 enum GeofenceEventTrigger { enter, exit, dwell }
 
-extension GeofenceEventTriggerExtension on GeofenceEventTrigger {
-  String get baseSiteId {
-    /// toString returns the name of the enum too
-    /// (ex: "GeofenceEventTrigger.enter" => "enter")
-    return toString()
-        .split('.')
-        .last;
-  }
-}
-
 // Internal.
 int geofenceEventToInt(GeofenceEventTrigger e) {
   switch (e) {
