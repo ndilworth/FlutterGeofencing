@@ -271,6 +271,7 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
               args,
               result)
       "GeofencingPlugin.getRegisteredGeofenceIds" -> getRegisteredGeofenceIds(mContext!!, result)
+      "GeofencingPlugin.terminateService" -> onDetachedFromEngine(null)
       else -> result.notImplemented()
     }
   }
