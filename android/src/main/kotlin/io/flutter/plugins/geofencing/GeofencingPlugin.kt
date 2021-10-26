@@ -9,9 +9,11 @@ import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
@@ -25,6 +27,9 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import org.json.JSONArray
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
 
 class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
   private var mContext : Context? = null
@@ -50,20 +55,14 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
     @JvmStatic
     fun reRegisterAfterReboot(context: Context) {
       synchronized(sGeofenceCacheLock) {
-        var p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        var persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null)
-        if (persistentGeofences == null) {
-          return
-        }
+        val p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null) ?: return
         for (id in persistentGeofences) {
-          val gfJson = p.getString(getPersistentGeofenceKey(id), null)
-          if (gfJson == null) {
-            continue
-          }
+          val gfJson = p.getString(getPersistentGeofenceKey(id), null) ?: continue
           val gfArgs = JSONArray(gfJson)
-          val list = ArrayList<Object>()
+          val list = ArrayList<Any>()
           for (i in 0 until gfArgs.length()) {
-            list.add(gfArgs.get(i) as Object)
+            list.add(gfArgs.get(i) as Any)
           }
           val geoClient = LocationServices.getGeofencingClient(context)
           registerGeofence(context, geoClient, list, null, false)
@@ -95,9 +94,9 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
               .setNotificationResponsiveness(notificationResponsiveness)
               .setExpirationDuration(expirationDuration)
               .build()
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-              (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                      == PackageManager.PERMISSION_DENIED)) {
+      val locationPermission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+      Log.w(TAG, "Current LocationPermission $locationPermission")
+      if (locationPermission == PackageManager.PERMISSION_DENIED) {
         val msg = "'registerGeofence' requires the ACCESS_FINE_LOCATION permission."
         Log.w(TAG, msg)
         result?.error(msg, null, null)
@@ -121,8 +120,8 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
     @JvmStatic
     private fun addGeofenceToCache(context: Context, id: String, args: ArrayList<*>) {
       synchronized(sGeofenceCacheLock) {
-        var p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        var obj = JSONArray(args)
+        val p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val obj = JSONArray(args)
         var persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null)
         if (persistentGeofences == null) {
           persistentGeofences = HashSet<String>()
@@ -130,11 +129,10 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
           persistentGeofences = HashSet<String>(persistentGeofences)
         }
         persistentGeofences.add(id)
-        context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-                .edit()
-                .putStringSet(PERSISTENT_GEOFENCES_IDS, persistentGeofences)
-                .putString(getPersistentGeofenceKey(id), obj.toString())
-                .apply()
+        val pref = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
+        pref.putStringSet(PERSISTENT_GEOFENCES_IDS, persistentGeofences)
+        pref.putString(getPersistentGeofenceKey(id), obj.toString())
+        pref.apply()
       }
     }
 
@@ -143,10 +141,9 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
     private fun initializeService(context: Context, args: ArrayList<*>?) {
       Log.d(TAG, "Initializing GeofencingService")
       val callbackHandle = args!![0] as Long
-      context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-              .edit()
-              .putLong(CALLBACK_DISPATCHER_HANDLE_KEY, callbackHandle)
-              .apply()
+      val pref = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
+      pref.putLong(CALLBACK_DISPATCHER_HANDLE_KEY, callbackHandle)
+      pref.apply()
     }
 
     @JvmStatic
@@ -187,8 +184,8 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
     private fun getRegisteredGeofenceIds(context: Context, result: Result) {
       synchronized(sGeofenceCacheLock) {
         val list = ArrayList<String>()
-        var p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
-        var persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null)
+        val p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null)
         if (persistentGeofences != null && persistentGeofences.size > 0) {
           for (id in persistentGeofences) {
             list.add(id)
@@ -201,30 +198,30 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
     @JvmStatic
     private fun removeGeofenceFromCache(context: Context, id: String) {
       synchronized(sGeofenceCacheLock) {
-        var p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val p = context.getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
         var persistentGeofences = p.getStringSet(PERSISTENT_GEOFENCES_IDS, null)
         if (persistentGeofences == null) {
           return
         }
         persistentGeofences = HashSet<String>(persistentGeofences)
         persistentGeofences.remove(id)
-        p.edit()
-                .remove(getPersistentGeofenceKey(id))
-                .putStringSet(PERSISTENT_GEOFENCES_IDS, persistentGeofences)
-                .apply()
+        val pref = p.edit()
+        pref.remove(getPersistentGeofenceKey(id))
+        pref.putStringSet(PERSISTENT_GEOFENCES_IDS, persistentGeofences)
+        pref.apply()
       }
     }
 
     @JvmStatic
     private fun getPersistentGeofenceKey(id: String): String {
-      return "persistent_geofence/" + id
+      return "persistent_geofence/$id"
     }
   }
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-    mContext = binding.getApplicationContext()
+    mContext = binding.applicationContext
     mGeofencingClient = LocationServices.getGeofencingClient(mContext!!)
-    val channel = MethodChannel(binding.getBinaryMessenger(), "plugins.flutter.io/geofencing_plugin")
+    val channel = MethodChannel(binding.binaryMessenger, "plugins.flutter.io/geofencing_plugin")
     channel.setMethodCallHandler(this)
   }
 
@@ -234,7 +231,7 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
   }
 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    mActivity = binding.getActivity()
+    mActivity = binding.activity
   }
 
   override fun onDetachedFromActivity() {
@@ -246,19 +243,23 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
   }
 
   override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-    mActivity = binding.getActivity()
+    mActivity = binding.activity
   }
 
+  @RequiresApi(Build.VERSION_CODES.Q)
   override fun onMethodCall(call: MethodCall, result: Result) {
+    // [0] = int callback!.toRawHandle()
+    // [1] = bool allowBackgroundLocation
     val args = call.arguments<ArrayList<*>>()
     when(call.method) {
       "GeofencingPlugin.initializeService" -> {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val allowBackgroundLocation = args[1].toString().toBoolean()
+        if (allowBackgroundLocation) {
           mActivity?.requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION), 12312)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        } else {
           mActivity?.requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 12312)
         }
-        initializeService(mContext!!, args)
+        initializeService(mContext!!, arrayListOf(args[0]))
         result.success(true)
       }
       "GeofencingPlugin.registerGeofence" -> registerGeofence(mContext!!,
@@ -271,8 +272,13 @@ class GeofencingPlugin : ActivityAware, FlutterPlugin, MethodCallHandler {
               args,
               result)
       "GeofencingPlugin.getRegisteredGeofenceIds" -> getRegisteredGeofenceIds(mContext!!, result)
-      "GeofencingPlugin.terminateService" -> onDetachedFromEngine(null)
+      "GeofencingPlugin.terminateService" -> terminateService()
       else -> result.notImplemented()
     }
+  }
+
+  private fun terminateService() {
+    mContext = null
+    mGeofencingClient = null
   }
 }
