@@ -3,7 +3,7 @@
 // found in the LICENSE file
 
 #import "GeofencingPlugin.h"
-
+#import <os/log.h>
 #import <CoreLocation/CoreLocation.h>
 
 @implementation GeofencingPlugin {
@@ -141,10 +141,9 @@ static BOOL backgroundIsolateRun = NO;
   NSAssert(self, @"super init cannot be nil");
   _persistentState = [NSUserDefaults standardUserDefaults];
   _eventQueue = [[NSMutableArray alloc] init];
-  _locationManager = [[CLLocationManager alloc] init];
-  [_locationManager setDelegate:self];
-  [_locationManager requestAlwaysAuthorization];
-  _locationManager.allowsBackgroundLocationUpdates = YES;
+  //_locationManager = [[CLLocationManager alloc] init];
+  //[_locationManager setDelegate:self];
+  //_locationManager.allowsBackgroundLocationUpdates = YES;
 
   _headlessRunner = [[FlutterEngine alloc] initWithName:@"GeofencingIsolate" project:nil allowHeadlessExecution:YES];
   _registrar = registrar;
@@ -160,6 +159,16 @@ static BOOL backgroundIsolateRun = NO;
 }
 
 - (void)startGeofencingService:(int64_t)handle {
+  os_log(OS_LOG_DEFAULT, "startGeofencingService");
+  _locationManager = [[CLLocationManager alloc] init];
+  os_log(OS_LOG_DEFAULT, "CLLocationManager");
+  [_locationManager setDelegate:self];
+  os_log(OS_LOG_DEFAULT, "setDelegate");
+  [_locationManager requestAlwaysAuthorization];
+  os_log(OS_LOG_DEFAULT, "requestAlwaysAuthorization");
+  _locationManager.allowsBackgroundLocationUpdates = YES;
+  os_log(OS_LOG_DEFAULT, "allowsBackgroundLocationUpdates");
+
   [self setCallbackDispatcherHandle:handle];
   FlutterCallbackInformation *info = [FlutterCallbackCache lookupCallbackInformation:handle];
   NSAssert(info != nil, @"failed to find callback");
